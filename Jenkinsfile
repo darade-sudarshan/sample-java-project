@@ -1,28 +1,63 @@
 pipeline {
+    environment {
+        imagename = "daradesudarshan/centralrepo"
+        dockerImage = ''
+        containerName = 'my-java-app'
+        dockerHubCredentials = 'docker'
+    }
+ 
     agent any
-    tools{
-        maven 'Maven-3.9.0'
-    }
+ 
     stages {
-        stage('Build') {
+        stage('Cloning Git') {
             steps {
-                echo 'Building the Java application...'
-                sh 'mvn clean install'
+                git([url: 'https://github.com/darade-sudarshan/sample-java-project.git', branch: 'main'])
             }
         }
-        stage('Test') {
+ 
+        stage('Building image') {
             steps {
-                echo 'Running tests...'
-                // Add your test commands here if you have tests
+                script {
+                    dockerImage = docker.build "${imagename}:my-java-app"
+                }
             }
         }
-    }
-    post {
-        success {
-            echo 'Build and test succeeded!'
+ 
+        stage('Running image') {
+            steps {
+                script {
+                    sh "docker run -d --name ${containerName} ${imagename}:my-java-app"
+                    // Perform any additional steps needed while the container is running
+                }
+            }
         }
-        failure {
-            echo 'Build or test failed!'
+ 
+        stage('Stop and Remove Container') {
+            steps {
+                script {
+                    sh "docker stop ${containerName} || true"
+                    sh "docker rm ${containerName} || true"
+                }
+            }
         }
+ 
+        stage('Deploy Image') {
+            steps {
+                script {
+                    // Use Jenkins credentials for Docker Hub login
+                    withCredentials([usernamePassword(credentialsId: dockerHubCredentials, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        sh "docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD"
+ 
+                        // Push the image
+                        sh "docker push ${imagename}:my-java-app"
+                    }
+                }
+            }
+        }
+        stage('Cleaning up') { 
+            steps { 
+                sh "docker rmi $registry:$BUILD_NUMBER" 
+            }
+        } 
     }
 }
