@@ -26,7 +26,7 @@ pipeline {
         stage('Running image') {
             steps {
                 script {
-                    sh "docker run -d --name ${containerName} ${imagename}:my-java-app"
+                    sh "docker run -dit --name ${containerName} ${imagename}:my-java-app /bin/bash"
                     // Perform any additional steps needed while the container is running
                 }
             }
@@ -56,7 +56,7 @@ pipeline {
         }
         stage('Cleaning up') { 
             steps { 
-                sh "docker rmi $registry:$BUILD_NUMBER" 
+                sh "docker rmi ${imagename}:my-java-app" 
             }
         } 
     }
